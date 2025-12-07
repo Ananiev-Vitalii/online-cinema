@@ -9,7 +9,10 @@ readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi (>=0.123.5,<0.124.0)",
-    "uvicorn[standard] (>=0.38.0,<0.39.0)"
+    "uvicorn[standard] (>=0.38.0,<0.39.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "aiosqlite (>=0.21.0,<0.22.0)",
+    "alembic (>=1.17.2,<2.0.0)"
 ]
 
 
