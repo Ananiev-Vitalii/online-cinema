@@ -4,8 +4,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
-from src.database.db import Base
-from src.database.enums import UserGroupEnum, GenderEnum
+from database.db import Base
+from database.enums import UserGroupEnum, GenderEnum
 
 
 class UserGroup(Base):
