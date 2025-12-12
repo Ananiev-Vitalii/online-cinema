@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     VERIFY_TOKEN_EXPIRE_MINUTES: int
+    REFRESH_TOKEN_EXPIRE_HOURS: int
 
     EMAIL_HOST: str
     EMAIL_PORT: int
