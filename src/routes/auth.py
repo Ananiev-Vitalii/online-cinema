@@ -8,8 +8,11 @@ from core.config import settings
 from services.email import send_activation_email
 from database.models.accounts import User, UserGroup
 from schemas.common import MessageResponse
-from schemas.auth import UserCreate, UserLogin, Token
-from security.auth import hash_password, verify_password, create_access_token, decode_token
+from schemas.auth import UserCreate, UserLogin, TokenPair, RefreshTokenRequest
+from security.auth import (
+    hash_password, verify_password, create_access_token, decode_token, create_token_pair,
+    delete_refresh_token, verify_refresh_token
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -55,8 +58,8 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)) -> Mess
     )
 
 
-@router.post("/login", response_model=Token)
-async def login(user: UserLogin, db: AsyncSession = Depends(get_db)) -> Token:
+@router.post("/login", response_model=TokenPair)
+async def login(user: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenPair:
     result = await db.execute(select(User).where(User.email == user.email))
     db_user = result.scalar_one_or_none()
 
@@ -72,9 +75,26 @@ async def login(user: UserLogin, db: AsyncSession = Depends(get_db)) -> Token:
             detail="Account not activated. Check your email."
         )
 
-    access_token = create_access_token({"sub": str(db_user.id)})
+    token_pair = await create_token_pair(db_user.id, db)
 
-    return Token(access_token=access_token)
+    return TokenPair(**token_pair)
+
+
+@router.post("/refresh", response_model=TokenPair)
+async def refresh_tokens(data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    token_obj = await verify_refresh_token(data.refresh_token, db)
+    if not token_obj:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+    user_id = token_obj.user_id
+    await delete_refresh_token(data.refresh_token, db)
+    return await create_token_pair(user_id, db)
+
+
+@router.post("/logout")
+async def logout(data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)) -> MessageResponse:
+    await delete_refresh_token(data.refresh_token, db)
+    return MessageResponse(message="Successfully logged out")
 
 
 @router.get("/verify", include_in_schema=False)
