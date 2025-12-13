@@ -48,12 +48,21 @@ class UserProfile(Base):
     user = relationship("User", back_populates="profile")
 
 
-class RefreshToken(Base):
-    __tablename__ = "refresh_tokens"
-
+class BaseToken(Base):
+    __abstract__ = True  # не создаёт таблицу
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(String, unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
 
+
+class RefreshToken(BaseToken):
+    __tablename__ = "refresh_tokens"
+
     user = relationship("User", backref="refresh_tokens")
+
+
+class PasswordResetToken(BaseToken):
+    __tablename__ = "password_reset_tokens"
+
+    user = relationship("User", backref="password_reset_token")
