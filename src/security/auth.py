@@ -1,4 +1,5 @@
 import uuid
+from typing import Type
 from jose import JWTError, jwt
 from typing import Any, Optional
 from sqlalchemy import select, delete
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
 
 from core.config import settings
-from database.models.accounts import RefreshToken
+from database.models.accounts import RefreshToken, PasswordResetToken
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -38,38 +39,32 @@ def decode_token(token: str) -> Optional[dict[str, Any]]:
         return None
 
 
-# REFRESH TOKEN SYSTEM
-async def create_refresh_token(user_id: int, session: AsyncSession) -> str:
+# REFRESH / PASSWORD RESET TOKENS SYSTEM
+async def create_token(model: Type[RefreshToken], user_id: int, lifetime_hours: int, db: AsyncSession) -> str:
     token_value = str(uuid.uuid4())
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.REFRESH_TOKEN_EXPIRE_HOURS)
-
-    refresh_token = RefreshToken(
-        user_id=user_id,
-        token=token_value,
-        expires_at=expires_at
-    )
-
-    session.add(refresh_token)
-    await session.commit()
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=lifetime_hours)
+    token_obj = model(user_id=user_id, token=token_value, expires_at=expires_at)
+    db.add(token_obj)
+    await db.commit()
     return token_value
 
 
-async def verify_refresh_token(token: str, session: AsyncSession) -> Optional[RefreshToken]:
-    result = await session.execute(select(RefreshToken).where(RefreshToken.token == token))
+async def delete_token(model: Type[RefreshToken], token: str, db: AsyncSession) -> None:
+    await db.execute(delete(model).where(model.token == token))
+    await db.commit()
+
+
+async def verify_token(model: Type[RefreshToken], token: str, db: AsyncSession) -> Optional[RefreshToken]:
+    result = await db.execute(select(model).where(model.token == token))
     token_obj = result.scalars().first()
     if not token_obj or token_obj.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         return None
     return token_obj
 
 
-async def delete_refresh_token(token: str, session: AsyncSession) -> None:
-    await session.execute(delete(RefreshToken).where(RefreshToken.token == token))
-    await session.commit()
-
-
-async def create_token_pair(user_id: int, session: AsyncSession) -> dict:
+async def create_token_pair(user_id: int, db: AsyncSession) -> dict:
     access_token = create_access_token({"sub": str(user_id)})
-    refresh_token = await create_refresh_token(user_id, session)
+    refresh_token = await create_token(RefreshToken, user_id, settings.REFRESH_TOKEN_EXPIRE_HOURS, db)
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
