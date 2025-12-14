@@ -1,17 +1,31 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
+import re
+
+PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).+$")
+
+
+class ValidatePassword(BaseModel):
+    @field_validator("password", "new_password", check_fields=False)
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not PASSWORD_PATTERN.match(value):
+            raise ValueError(
+                "Password must include uppercase, lowercase, number, and special character."
+            )
+        return value
 
 
 class BaseUser(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8)
 
 
-class UserCreate(BaseUser):
+class UserCreate(BaseUser, ValidatePassword):
     """Used for user registration."""
 
 
 class UserLogin(BaseUser):
-    """Used for user login."""
+    password: str
 
 
 class TokenPair(BaseModel):
@@ -28,11 +42,11 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
-class PasswordResetConfirm(BaseModel):
+class PasswordResetConfirm(ValidatePassword):
     token: str
-    new_password: str
+    new_password: str = Field(..., min_length=8)
 
 
-class ChangePasswordRequest(BaseModel):
+class ChangePasswordRequest(ValidatePassword):
     old_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=8)
