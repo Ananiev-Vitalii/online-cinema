@@ -5,12 +5,18 @@ from typing import Any, Optional
 from sqlalchemy import select, delete
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
 
+from database.db import get_db
 from core.config import settings
-from database.models.accounts import RefreshToken, PasswordResetToken
+from database.models.accounts import RefreshToken, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login",
+)
 
 
 # PASSWORD UTILS
@@ -70,3 +76,25 @@ async def create_token_pair(user_id: int, db: AsyncSession) -> dict:
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+
+
+# GET CURRENT USER FROM ACCESS TOKEN
+async def get_current_user(
+        token: str = Depends(oauth2_scheme),
+        db: AsyncSession = Depends(get_db)
+) -> User:
+    payload = decode_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+    user_id = int(payload.get("sub"))
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user

@@ -9,10 +9,10 @@ from services.email import send_activation_email, send_password_reset_email
 from database.models.accounts import User, UserGroup, RefreshToken, PasswordResetToken
 from schemas.common import MessageResponse
 from schemas.auth import UserCreate, UserLogin, TokenPair, RefreshTokenRequest, PasswordResetRequest, \
-    PasswordResetConfirm
+    PasswordResetConfirm, ChangePasswordRequest
 from security.auth import (
     hash_password, verify_password, create_access_token, decode_token, create_token_pair,
-    delete_token, verify_token, create_token
+    delete_token, verify_token, create_token, get_current_user
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -158,3 +158,21 @@ async def reset_password(data: PasswordResetConfirm, db: AsyncSession = Depends(
     await delete_token(PasswordResetToken, data.token, db)
 
     return MessageResponse(message="Password has been successfully reset.")
+
+
+@router.post("/change-password")
+async def change_password(
+        data: ChangePasswordRequest,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+) -> MessageResponse:
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password"
+        )
+
+    current_user.hashed_password = hash_password(data.new_password)
+    await db.commit()
+
+    return MessageResponse(message="Password changed successfully.")
