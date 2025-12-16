@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from database.db import get_db
 from core.config import settings
 from services.email import send_activation_email, send_password_reset_email
-from database.models.accounts import User, UserGroup, RefreshToken, PasswordResetToken
+from database.models.accounts import User, UserGroup, UserProfile, RefreshToken, PasswordResetToken
 from schemas.common import MessageResponse
 from schemas.auth import UserCreate, UserLogin, TokenPair, RefreshTokenRequest, PasswordResetRequest, \
     PasswordResetConfirm, ChangePasswordRequest
@@ -44,6 +44,10 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)) -> Mess
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    user_profile = UserProfile(user_id=new_user.id)
+    db.add(user_profile)
+    await db.commit()
 
     token = create_access_token(
         {"sub": user.email},
