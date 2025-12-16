@@ -3,6 +3,7 @@ from typing import Type
 from jose import JWTError, jwt
 from typing import Any, Optional
 from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, HTTPException, status
@@ -91,7 +92,11 @@ async def get_current_user(
         )
 
     user_id = int(payload.get("sub"))
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.group))
+        .where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
 
     if not user:
