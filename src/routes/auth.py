@@ -180,3 +180,50 @@ async def change_password(
     await db.commit()
 
     return MessageResponse(message="Password changed successfully.")
+
+
+@router.post("/resend-verification-email")
+async def resend_verification_email(
+        data: PasswordResetRequest,
+        db: AsyncSession = Depends(get_db)
+) -> MessageResponse:
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="Account already activated")
+
+    token = create_access_token(
+        {"sub": user.email},
+        expires_delta=timedelta(minutes=settings.VERIFY_TOKEN_EXPIRE_MINUTES)
+    )
+
+    await send_activation_email(user.email, token)
+
+    return MessageResponse(message=f"A new activation email has been sent to {user.email}.")
+
+
+@router.post("/resend-password-reset")
+async def resend_password_reset(
+        data: PasswordResetRequest,
+        db: AsyncSession = Depends(get_db)
+) -> MessageResponse:
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is not activated")
+
+    token_value = await create_token(
+        PasswordResetToken, user.id, settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS, db
+    )
+
+    await send_password_reset_email(user.email, token_value)
+
+    return MessageResponse(message=f"A new password reset email has been sent to {user.email}.")
