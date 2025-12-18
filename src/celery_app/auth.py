@@ -2,12 +2,12 @@ import os
 import sys
 from celery import Celery
 
+from core.config import settings
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(BASE_DIR)
 if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
-
-from core.config import settings
 
 celery_app = Celery(
     "auth_tasks",
