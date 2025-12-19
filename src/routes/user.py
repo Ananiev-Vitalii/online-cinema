@@ -9,7 +9,12 @@ from schemas.user import UserProfileResponse, UserProfileUpdate
 router = APIRouter(prefix="/users", tags=["User"])
 
 
-@router.get("/me", response_model=UserProfileResponse)
+@router.get(
+    "/me",
+    summary="Get current user's profile",
+    description="Returns the profile information of the currently authenticated user, including email and group.",
+    response_model=UserProfileResponse,
+)
 async def get_my_profile(
         current_user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
@@ -31,7 +36,12 @@ async def get_my_profile(
     )
 
 
-@router.put("/me/update", response_model=UserProfileResponse)
+@router.put(
+    "/me/update",
+    summary="Update current user's profile",
+    description="Allows the current user to update personal details such as name, avatar, or bio.",
+    response_model=UserProfileResponse,
+)
 async def update_my_profile(
         data: UserProfileUpdate,
         current_user: User = Depends(get_current_user),
@@ -45,7 +55,6 @@ async def update_my_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # Обновляем только изменённые поля
     for field, value in data.dict(exclude_unset=True).items():
         setattr(profile, field, value)
 

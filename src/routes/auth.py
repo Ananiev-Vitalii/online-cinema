@@ -18,7 +18,13 @@ from security.auth import (
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/register")
+@router.post(
+    "/register",
+    summary="Register a new user",
+    description="Creates a new user account and sends an activation email. "
+                "The account remains inactive until verified.",
+    response_model=MessageResponse,
+)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)) -> MessageResponse:
     result = await db.execute(select(User).where(User.email == user.email))
     existing_user = result.scalar_one_or_none()
@@ -63,7 +69,12 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)) -> Mess
     )
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post(
+    "/login",
+    summary="User login",
+    description="Authenticates a user and returns an access and refresh token pair. Requires an activated account.",
+    response_model=TokenPair,
+)
 async def login(user: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenPair:
     result = await db.execute(select(User).where(User.email == user.email))
     db_user = result.scalar_one_or_none()
@@ -85,7 +96,12 @@ async def login(user: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenPai
     return TokenPair(**token_pair)
 
 
-@router.post("/refresh", response_model=TokenPair)
+@router.post(
+    "/refresh",
+    summary="Refresh access token",
+    description="Uses a valid refresh token to issue a new access token. The old refresh token is invalidated.",
+    response_model=TokenPair,
+)
 async def refresh_tokens(data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)) -> dict:
     token_obj = await verify_token(RefreshToken, data.refresh_token, db)
     if not token_obj:
@@ -96,7 +112,11 @@ async def refresh_tokens(data: RefreshTokenRequest, db: AsyncSession = Depends(g
     return await create_token_pair(user_id, db)
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    summary="Logout user",
+    description="Invalidates the current refresh token to prevent further use.",
+)
 async def logout(data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)) -> MessageResponse:
     await delete_token(RefreshToken, data.refresh_token, db)
     return MessageResponse(message="Successfully logged out")
