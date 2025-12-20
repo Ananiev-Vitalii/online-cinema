@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 import re
 
 PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).+$")
@@ -19,13 +19,14 @@ class BaseUser(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
                 "password": "StrongPassword123"
             }
         }
+    )
 
 
 class UserCreate(BaseUser, ValidatePassword):
@@ -49,26 +50,28 @@ class RefreshTokenRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
                 "password": "StrongPassword123"
             }
         }
+    )
 
 
 class PasswordResetConfirm(ValidatePassword):
     token: str
     new_password: str = Field(..., min_length=8)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
                 "password": "StrongPassword123"
             }
         }
+    )
 
 
 class ChangePasswordRequest(ValidatePassword):

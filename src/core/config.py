@@ -1,5 +1,6 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR.parent / ".env"
@@ -25,8 +26,7 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str
 
-    class Config:
-        env_file = ENV_PATH
+    model_config = ConfigDict(env_file=ENV_PATH)
 
 
 settings = Settings()
