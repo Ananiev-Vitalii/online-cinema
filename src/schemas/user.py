@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import date
 from database.enums import GenderEnum
 
@@ -18,8 +18,9 @@ class UserProfileResponse(UserProfileBase):
     email: EmailStr
     group: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class UserProfileUpdate(UserProfileBase):
